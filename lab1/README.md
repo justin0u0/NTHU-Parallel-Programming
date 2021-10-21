@@ -20,7 +20,9 @@ See `v1.cc`.
 
 1. Do not modulo every iteration. Modulo only once.
 2. Calculate only 1/8 of the circles. Which reduce the amount of calculations by 1/2. See the GIF belows.
-	![](src/Midpoint_circle_algorithm_animation_(radius_23.gif)
+
+	![](src/Midpoint_circle_algorithm_animation_radius_23.gif)
+
 3. Do not calculate ![r^2-x^2](https://latex.codecogs.com/svg.image?r^2-x^2) every iteration, use subtraction to get the next ![r^2-x^2](https://latex.codecogs.com/svg.image?r^2-x^2).
 
 ### TODOs
