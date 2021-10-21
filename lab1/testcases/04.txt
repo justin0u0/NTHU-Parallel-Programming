@@ -1,0 +1,5 @@
+nproc=4
+r=2147
+k=2147
+answer=2048
+timelimit=3
