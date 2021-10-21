@@ -1,3 +1,5 @@
+// Author: justin0u0<mail@justin0u0.com>
+
 #include <stdio.h>
 #include <math.h>
 #include <mpi.h>
