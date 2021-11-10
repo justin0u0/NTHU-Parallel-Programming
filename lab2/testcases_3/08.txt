@@ -1,0 +1,7 @@
+nnode=2
+nproc=6
+ncpus=4
+r=21474836
+k=21474836
+answer=300000
+timelimit=3

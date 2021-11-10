@@ -1,0 +1,5 @@
+ncpus=4
+r=21474
+k=21474
+answer=11608
+timelimit=3

@@ -1,0 +1,5 @@
+ncpus=4
+r=5
+k=100
+answer=88
+timelimit=3
