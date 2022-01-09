@@ -4,139 +4,140 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+
 #include "word_count_types.h"
 
 class WordCountReducer {
 private:
-	int id;
-	int taskId;
-	std::vector<std::string> inputFiles;
-	std::string outputFile;
+  int id;
+  int taskId;
+  std::vector<std::string> inputFiles;
+  std::string outputFile;
 
-	std::vector<ListWordCountKV*>* fetch() {
-		std::vector<ListWordCountKV*>* output = new std::vector<ListWordCountKV*>;
-		output->reserve(inputFiles.size());
+  std::vector<ListWordCountKV*>* fetch() {
+    std::vector<ListWordCountKV*>* output = new std::vector<ListWordCountKV*>;
+    output->reserve(inputFiles.size());
 
-		for (const std::string& path : inputFiles) {
-			std::ifstream f(path);
+    for (const std::string& path : inputFiles) {
+      std::ifstream f(path);
 
-			int reducerId;
-			std::string key;
-			int value;
+      int reducerId;
+      std::string key;
+      int value;
 
-			ListWordCountKV* data = new ListWordCountKV;
+      ListWordCountKV* data = new ListWordCountKV;
 
-			while (f >> reducerId >> key >> value) {
-				if (reducerId == id) {
-					data->emplace_back(key, value);
-				}
-			}
+      while (f >> reducerId >> key >> value) {
+        if (reducerId == id) {
+          data->emplace_back(key, value);
+        }
+      }
 
-			output->emplace_back(data);
-		}
+      output->emplace_back(data);
+    }
 
-		return output;
-	}
+    return output;
+  }
 
-	VectorWordCountKV* merge(std::vector<ListWordCountKV*>* input) {
-		int len = (int)input->size();
-		
-		for (int i = 1; i < len; i <<= 1) {
-			for (int j = 0; j + i < len; j += (i << 1)) {
-				// inplace merge list[j] and list[j + i] into list[j]
+  VectorWordCountKV* merge(std::vector<ListWordCountKV*>* input) {
+    int len = (int)input->size();
 
-				ListWordCountKV* lhs = input->at(j);
-				ListWordCountKV* rhs = input->at(j + i);
+    for (int i = 1; i < len; i <<= 1) {
+      for (int j = 0; j + i < len; j += (i << 1)) {
+        // inplace merge list[j] and list[j + i] into list[j]
 
-				ListWordCountKV::iterator rit = rhs->begin();
+        ListWordCountKV* lhs = input->at(j);
+        ListWordCountKV* rhs = input->at(j + i);
 
-				for (ListWordCountKV::iterator lit = lhs->begin(); lit != lhs->end(); ++lit) {
-					while (rit != rhs->end() && (*rit) < (*lit)) {
-						lhs->emplace(lit, *rit);
-						++rit;
-					}
-				}
+        ListWordCountKV::iterator rit = rhs->begin();
 
-				while (rit != rhs->end()) {
-					lhs->emplace(lhs->end(), *rit);
-					++rit;
-				}
+        for (ListWordCountKV::iterator lit = lhs->begin(); lit != lhs->end(); ++lit) {
+          while (rit != rhs->end() && (*rit) < (*lit)) {
+            lhs->emplace(lit, *rit);
+            ++rit;
+          }
+        }
 
-				delete rhs;
-			}
-		}
+        while (rit != rhs->end()) {
+          lhs->emplace(lhs->end(), *rit);
+          ++rit;
+        }
 
-		ListWordCountKV* l = input->at(0);
-		VectorWordCountKV* output = new VectorWordCountKV(l->begin(), l->end());
+        delete rhs;
+      }
+    }
 
-		delete l;
-		delete input;
+    ListWordCountKV* l = input->at(0);
+    VectorWordCountKV* output = new VectorWordCountKV(l->begin(), l->end());
 
-		return output;
-	}
+    delete l;
+    delete input;
 
-	VectorWordCountKVs* group(VectorWordCountKV* input) {
-		VectorWordCountKVs* output;
+    return output;
+  }
 
-		for (const WordCountKV& kv : (*input)) {
-			if (output->empty() || output->back().compare(kv) != 0){
-				output->emplace_back(kv.key);
-			}
-			output->back().values.emplace_back(kv.value);
-		}
+  VectorWordCountKVs* group(VectorWordCountKV* input) {
+    VectorWordCountKVs* output;
 
-		delete input;
+    for (const WordCountKV& kv : (*input)) {
+      if (output->empty() || output->back().compare(kv) != 0) {
+        output->emplace_back(kv.key);
+      }
+      output->back().values.emplace_back(kv.value);
+    }
 
-		return output;
-	}
+    delete input;
 
-	VectorWordCountKV* reduce(VectorWordCountKVs* input) {
-		VectorWordCountKV* output = new VectorWordCountKV;
-		output->reserve(input->size());
+    return output;
+  }
 
-		for (const WordCountKVs& kvs : (*input)) {
-			// reduce by sum aggregation
-			int sum = 0;
-			for (int value : kvs.values) {
-				sum += value;
-			}
-			output->emplace_back(kvs.key, sum);
-		}
+  VectorWordCountKV* reduce(VectorWordCountKVs* input) {
+    VectorWordCountKV* output = new VectorWordCountKV;
+    output->reserve(input->size());
 
-		delete input;
+    for (const WordCountKVs& kvs : (*input)) {
+      // reduce by sum aggregation
+      int sum = 0;
+      for (int value : kvs.values) {
+        sum += value;
+      }
+      output->emplace_back(kvs.key, sum);
+    }
 
-		return output;
-	}
+    delete input;
 
-	void write(VectorWordCountKV* input) {
-		std::ofstream f(outputFile);
+    return output;
+  }
 
-		for (const WordCountKV& kv : (*input)) {
-			f << kv.key << ' ' << kv.value << '\n';
-		}
+  void write(VectorWordCountKV* input) {
+    std::ofstream f(outputFile);
 
-		delete input;
-	}
+    for (const WordCountKV& kv : (*input)) {
+      f << kv.key << ' ' << kv.value << '\n';
+    }
+
+    delete input;
+  }
 
 public:
-	WordCountReducer(int id, int taskId, std::vector<std::string>& inputFiles, std::string& outputFile)
-		: id(id), taskId(taskId), inputFiles(inputFiles), outputFile(outputFile) {}
+  WordCountReducer(int id, int taskId, std::vector<std::string>& inputFiles, std::string& outputFile)
+      : id(id), taskId(taskId), inputFiles(inputFiles), outputFile(outputFile) {}
 
-	static void* run(void* argv) {
-		WordCountReducer* reducer = (WordCountReducer*)argv;
+  static void* run(void* argv) {
+    WordCountReducer* reducer = (WordCountReducer*)argv;
 
-		std::vector<ListWordCountKV*>* fetchResult = reducer->fetch();
+    std::vector<ListWordCountKV*>* fetchResult = reducer->fetch();
 
-		VectorWordCountKV* mergeResult = reducer->merge(fetchResult);
+    VectorWordCountKV* mergeResult = reducer->merge(fetchResult);
 
-		VectorWordCountKVs* groupResult = reducer->group(mergeResult);
+    VectorWordCountKVs* groupResult = reducer->group(mergeResult);
 
-		VectorWordCountKV* reduceResult = reducer->reduce(groupResult);
+    VectorWordCountKV* reduceResult = reducer->reduce(groupResult);
 
-		reducer->write(reduceResult);
+    reducer->write(reduceResult);
 
-		return nullptr;
-	}
+    return nullptr;
+  }
 };
 
-#endif // _WORD_COUNT_REDUCER_H_
+#endif  // _WORD_COUNT_REDUCER_H_
