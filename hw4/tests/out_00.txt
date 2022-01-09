@@ -1,0 +1,5 @@
+cat 5
+dog 7
+garbage 3
+hello 5
+just 2

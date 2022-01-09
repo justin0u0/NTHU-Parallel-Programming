@@ -1,0 +1,16 @@
+0 cat 1
+0 dog 1
+0 dog 1
+1 egg 1
+1 frog 1
+1 frog 1
+1 frog 1
+1 gas 1
+0 hello 1
+0 hello 1
+1 horse 1
+1 horse 1
+1 horse 1
+1 horse 1
+1 world 1
+1 world 1

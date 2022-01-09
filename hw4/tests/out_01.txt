@@ -1,0 +1,6 @@
+egg 3
+frog 6
+gas 2
+horse 13
+king 3
+world 4

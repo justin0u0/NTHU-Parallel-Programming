@@ -1,0 +1,10 @@
+{
+	"NODES": 3,
+	"CPUS": 12,
+	"JOB_NAME": "TEST04",
+	"NUM_REDUCER": 10,
+	"DELAY": 3,
+	"INPUT_FILE_NAME": "04.word",
+	"CHUNK_SIZE": 5,
+	"LOCALITY_CONFIG_FILENAME": "04.loc"
+}
