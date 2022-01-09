@@ -2,3 +2,5 @@
 .DS_Store
 
 *.dSYM/
+
+hw4/**/word_count_mapper_test-*.temp
