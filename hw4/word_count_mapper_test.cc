@@ -6,7 +6,7 @@
 int main() {
   /*
   std::string jobName = std::string(argv[1]);
-  int numReducer = std::stoi(argv[2]);
+  int numReducers = std::stoi(argv[2]);
   int delay = std::stoi(argv[3]);
   std::string inputFilename = std::string(argv[4]);
   int chunkSize = std::stoi(argv[5]);
@@ -15,14 +15,14 @@ int main() {
   */
 
   std::string jobName = "word_count_mapper_test";
-  int numReducer = 3;
+  int numReducers = 3;
   int delay = 0;
   std::string inputFilename = "./ta/testcases/01.word";
   int chunkSize = 2;
   std::string localityConfigFilename = "./ta/testcases/01.loc";
   std::string outputDir = "./tests/";
 
-  WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducer, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
+  WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
   std::ifstream f(inputFilename);
   int lines = std::count(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>(), '\n') + 1;

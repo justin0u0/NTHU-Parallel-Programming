@@ -123,8 +123,8 @@ public:
   WordCountReducer(int id, int taskId, std::vector<std::string>& inputFiles, std::string& outputFile)
       : id(id), taskId(taskId), inputFiles(inputFiles), outputFile(outputFile) {}
 
-  static void* run(void* argv) {
-    WordCountReducer* reducer = (WordCountReducer*)argv;
+  static void* run(void* arg) {
+    WordCountReducer* reducer = (WordCountReducer*)arg;
 
     std::vector<ListWordCountKV*>* fetchResult = reducer->fetch();
 

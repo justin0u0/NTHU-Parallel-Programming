@@ -24,10 +24,10 @@ public:
 	// The name of the job. It is used to generate the output filename.
 	std::string jobName;
 
-	// The number of reducer tasks of the MapReduce program. The number of
+	// The number of reducers tasks of the MapReduce program. The number of
 	// mapper tasks will be the same as the number of data chunks of the
 	// input file specified in the file locality configure file.
-	int numReducer;
+	int numReducers;
 
 	// The sleeping time in seconds for reading a remote data chunk in a
 	// mapper task.
@@ -68,9 +68,9 @@ public:
 
 	LocalityConfig localityConfig;
 
-	WordCountConfig(int nodes, int cpus, std::string& jobName, int numReducer, int delay,
+	WordCountConfig(int nodes, int cpus, std::string& jobName, int numReducers, int delay,
 		std::string& inputFilename, int chunkSize, std::string& localityConfigFilename, std::string& outputDir)
-		: nodes(nodes), cpus(cpus), jobName(jobName), numReducer(numReducer), delay(delay),
+		: nodes(nodes), cpus(cpus), jobName(jobName), numReducers(numReducers), delay(delay),
 			inputFilename(inputFilename), chunkSize(chunkSize), localityConfigFilename(localityConfigFilename), outputDir(outputDir) {
 
 		// extend locality config file

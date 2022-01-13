@@ -57,7 +57,7 @@ private:
     MultimapWordCountKVInt* output = new MultimapWordCountKVInt;
 
     for (const WordCountKV& kv : (*input)) {
-      output->emplace(kv, kv.hash(config->numReducer));
+      output->emplace(kv, kv.hash(config->numReducers));
     }
 
     delete input;
@@ -82,8 +82,8 @@ public:
     return config->outputDir + config->jobName + "-" + std::to_string(taskId) + ".temp";
   }
 
-  static void* run(void* argv) {
-    WordCountMapper* mapper = (WordCountMapper*)argv;
+  static void* run(void* arg) {
+    WordCountMapper* mapper = (WordCountMapper*)arg;
 
     std::vector<std::string>* splitResult = mapper->split();
 
