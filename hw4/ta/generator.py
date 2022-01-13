@@ -30,8 +30,3 @@ elif args.action == 'chunk':
     
     with open(args.output, 'w') as out_file:
         out_file.write('\n'.join(chunk_list))
-
-
-        
-        
-
