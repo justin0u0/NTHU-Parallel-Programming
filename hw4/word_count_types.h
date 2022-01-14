@@ -4,6 +4,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -24,10 +25,13 @@ public:
 	// The name of the job. It is used to generate the output filename.
 	std::string jobName;
 
-	// The number of reducers tasks of the MapReduce program. The number of
+	// The number of reducer tasks of the MapReduce program.
+	int numReducers;
+
+	// The number of mapper tasks of the MapReduce program. The number of
 	// mapper tasks will be the same as the number of data chunks of the
 	// input file specified in the file locality configure file.
-	int numReducers;
+	int numMappers;
 
 	// The sleeping time in seconds for reading a remote data chunk in a
 	// mapper task.
@@ -64,7 +68,8 @@ public:
 		Locality(int taskId, int nodeId) : taskId(taskId), nodeId(nodeId) {}
 	};
 
-	typedef std::vector<Locality> LocalityConfig;
+	// map taskId (chuckId) to nodeId
+	typedef std::unordered_map<int, int> LocalityConfig;
 
 	LocalityConfig localityConfig;
 
@@ -72,13 +77,18 @@ public:
 		std::string& inputFilename, int chunkSize, std::string& localityConfigFilename, std::string& outputDir)
 		: nodes(nodes), cpus(cpus), jobName(jobName), numReducers(numReducers), delay(delay),
 			inputFilename(inputFilename), chunkSize(chunkSize), localityConfigFilename(localityConfigFilename), outputDir(outputDir) {
+		
+		numMappers = 0;
 
 		// extend locality config file
 		std::ifstream f(localityConfigFilename);
 
 		int taskId, nodeId;
 		while (f >> taskId >> nodeId) {
-			localityConfig.emplace_back(taskId, nodeId);
+			localityConfig.emplace(taskId, nodeId);
+
+			// each line in the locality config file represents a data chuck
+			++numMappers;
 		}
 	}
 };
