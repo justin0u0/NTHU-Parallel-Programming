@@ -32,22 +32,12 @@ int main(int argc, char **argv)
             word = line.substr(0, pos);
             words.push_back(word);
 
-            if (word_count.count(word) == 0)
-            {
-                word_count[word] = 1;
-            }
-            else
-            {
-                word_count[word]++;
-            }
-
             line.erase(0, pos + 1);
         }
         if (!line.empty())
             words.push_back(line);
         for (auto word : words)
         {
-            std::cout << word << " ";
             if (word_count.count(word) == 0)
             {
                 word_count[word] = 1;
@@ -57,7 +47,6 @@ int main(int argc, char **argv)
                 word_count[word]++;
             }
         }
-        std::cout << "\n";
     }
 
     std::vector<Item> wordcount_list;
