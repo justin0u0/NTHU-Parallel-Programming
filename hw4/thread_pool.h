@@ -1,5 +1,5 @@
-#ifndef _THREAD_POOL_H
-#define _THREAD_POOL_H
+#ifndef _THREAD_POOL_H_
+#define _THREAD_POOL_H_
 
 #include <pthread.h>
 #include <queue>
@@ -109,4 +109,4 @@ public:
 	}
 };
 
-#endif // _THREAD_POOL_H
+#endif // _THREAD_POOL_H_
