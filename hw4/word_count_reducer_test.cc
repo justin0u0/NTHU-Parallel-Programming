@@ -1,15 +1,37 @@
 #include <vector>
+
 #include "word_count_reducer.h"
-using namespace std;
 
 int main() {
-	vector<string> inputFiles{"./tests/temp_00.txt", "./tests/temp_01.txt", "./tests/temp_02.txt"};
+  /*
+  std::string jobName = std::string(argv[1]);
+  int numReducers = std::stoi(argv[2]);
+  int delay = std::stoi(argv[3]);
+  std::string inputFilename = std::string(argv[4]);
+  int chunkSize = std::stoi(argv[5]);
+  std::string localityConfigFilename = std::string(argv[6]);
+  std::string outputDir = std::string(argv[7]);
+  */
 
-	string reducer0OutputFile = "./tests/out_00.txt";
-	WordCountReducer* reducer0 = new WordCountReducer(1, 1, inputFiles, reducer0OutputFile);
-	string reducer1OutputFile = "./tests/out_01.txt";
-	WordCountReducer* reducer1 = new WordCountReducer(2, 2, inputFiles, reducer1OutputFile);
+  std::string jobName = "word_count_reducer_test";
+  int numReducers = 2;
+  int delay = 0;
+  std::string inputFilename = "./ta/testcases/01.word";
+  int chunkSize = 2;
+  std::string localityConfigFilename = "./ta/testcases/01.loc";
+  std::string outputDir = "./tests/";
 
-	WordCountReducer::run((void*)reducer0);
-	WordCountReducer::run((void*)reducer1);
+	WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
+
+	for (int i = 0; i < config->numReducers; ++i) {
+		WordCountReducer* reducer = new WordCountReducer(i + 1, i, config);
+
+		WordCountReducer::run((void*)reducer);
+
+		delete reducer;
+	}
+
+	delete config;
+
+	return 0;
 }

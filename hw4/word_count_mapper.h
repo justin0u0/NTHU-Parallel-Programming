@@ -66,7 +66,7 @@ private:
   }
 
   void write(MultimapWordCountKVInt* input) {
-    std::ofstream f(outputFilePath());
+    std::ofstream f(WordCountMapper::outputFilePath(taskId, config));
 
     for (const auto& kvi : (*input)) {
       f << kvi.second << ' ' << kvi.first.key << ' ' << kvi.first.value << '\n';
@@ -78,7 +78,7 @@ private:
 public:
   WordCountMapper(int id, int taskId, WordCountConfig* config) : id(id), taskId(taskId), config(config) {}
 
-  std::string outputFilePath() {
+  static std::string outputFilePath(int taskId, WordCountConfig* config) {
     return config->outputDir + config->jobName + "-" + std::to_string(taskId) + ".temp";
   }
 

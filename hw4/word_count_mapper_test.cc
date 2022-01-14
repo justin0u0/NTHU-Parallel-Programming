@@ -1,7 +1,7 @@
-#include "word_count_mapper.h"
-
 #include <algorithm>
 #include <fstream>
+
+#include "word_count_mapper.h"
 
 int main() {
   /*
@@ -24,14 +24,10 @@ int main() {
 
   WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
-  std::ifstream f(inputFilename);
-  int lines = std::count(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>(), '\n') + 1;
-  int numMapper = lines / chunkSize;
-
-  for (int i = 1; i <= numMapper; ++i) {
+  for (int i = 1; i <= config->numMappers; ++i) {
     WordCountMapper* mapper = new WordCountMapper(i, i, config);
 
-    WordCountMapper::run(mapper);
+    WordCountMapper::run((void*)mapper);
 
     delete mapper;
   }
