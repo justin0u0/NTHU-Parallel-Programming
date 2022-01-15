@@ -1,6 +1,11 @@
+#include <cstdio>
 #include <vector>
 
 #include "word_count_reducer.h"
+
+void callback(int id, int taskId) {
+  printf("callback from id %d done task %d\n", id, taskId);
+}
 
 int main() {
   /*
@@ -24,11 +29,9 @@ int main() {
 	WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
 	for (int i = 0; i < config->numReducers; ++i) {
-		WordCountReducer* reducer = new WordCountReducer(i + 1, i, config);
+		WordCountReducer* reducer = new WordCountReducer(i + 1, i, config, &callback);
 
 		WordCountReducer::run((void*)reducer);
-
-		delete reducer;
 	}
 
 	delete config;

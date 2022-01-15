@@ -3,6 +3,10 @@
 
 #include "word_count_mapper.h"
 
+void callback(int id, int taskId) {
+  printf("callback from id %d done task %d\n", id, taskId);
+}
+
 int main() {
   /*
   std::string jobName = std::string(argv[1]);
@@ -25,11 +29,9 @@ int main() {
   WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
   for (int i = 1; i <= config->numMappers; ++i) {
-    WordCountMapper* mapper = new WordCountMapper(i, i, config);
+    WordCountMapper* mapper = new WordCountMapper(i, i, config, &callback);
 
     WordCountMapper::run((void*)mapper);
-
-    delete mapper;
   }
 
   delete config;

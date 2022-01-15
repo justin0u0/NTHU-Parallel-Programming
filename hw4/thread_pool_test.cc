@@ -3,6 +3,8 @@
 
 #include "thread_pool.h"
 
+#define NUM_TASKS 10
+
 void* sleepPrint(void* arg) {
 	int value = *(int*)arg;
 
@@ -18,18 +20,19 @@ int main() {
 
 	pool->start();
 
-	int* arr = new int[100000];
-	for (int i = 0; i < 100000; ++i) {
+	int* arr = new int[NUM_TASKS];
+	for (int i = 0; i < NUM_TASKS; ++i) {
 		arr[i] = i;
 		pool->addTask(new ThreadPoolTask(&sleepPrint, (void*)&arr[i]));
 	}
 
-	sleep(60);
+	sleep(10);
 
+	printf("terminating\n"); fflush(stdout);
 	pool->terminate();
-	printf("terminating\n");
+	printf("done terminating\n"); fflush(stdout);
 	pool->join();
-	printf("done.\n");
+	printf("done.\n"); fflush(stdout);
 
 	delete[] arr;
 }

@@ -2,6 +2,7 @@
 #define _WORD_COUNT_MAPPER_H_
 
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <utility>
 
@@ -13,6 +14,8 @@ private:
   int taskId;
 
   WordCountConfig* config;
+
+  void (*callback)(int, int);
 
   std::vector<std::string>* split() {
     std::ifstream f(config->inputFilename);
@@ -76,7 +79,8 @@ private:
   }
 
 public:
-  WordCountMapper(int id, int taskId, WordCountConfig* config) : id(id), taskId(taskId), config(config) {}
+  WordCountMapper(int id, int taskId, WordCountConfig* config, void (*callback)(int, int))
+    : id(id), taskId(taskId), config(config), callback(callback) {}
 
   static std::string outputFilePath(int taskId, WordCountConfig* config) {
     return config->outputDir + config->jobName + "-" + std::to_string(taskId) + ".temp";
@@ -84,14 +88,24 @@ public:
 
   static void* run(void* arg) {
     WordCountMapper* mapper = (WordCountMapper*)arg;
+    // std::cout << "[WordCountMapper::run]: " << mapper->id << " mapper start" << std::endl;
 
     std::vector<std::string>* splitResult = mapper->split();
+    // std::cout << "[WordCountMapper::run]: " << mapper->id << " split done" << std::endl;
 
     VectorWordCountKV* mapResult = mapper->map(splitResult);
+    // std::cout << "[WordCountMapper::run]: " << mapper->id << " map done" << std::endl;
 
     MultimapWordCountKVInt* partitionResult = mapper->partition(mapResult);
+    // std::cout << "[WordCountMapper::run]: " << mapper->id << " partition done" << std::endl;
 
     mapper->write(partitionResult);
+    // std::cout << "[WordCountMapper::run]: " << mapper->id << " write done" << std::endl;
+
+    (*(mapper->callback))(mapper->id, mapper->taskId);
+    // std::cout << "[WordCountMapper::run]: " << mapper->id << " callback done" << std::endl;
+
+    delete mapper;
 
     return nullptr;
   }

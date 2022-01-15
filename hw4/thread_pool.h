@@ -24,7 +24,9 @@ private:
 
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
+
 	std::queue<ThreadPoolTask*> tasks;
+	const size_t size = 1;
 
 	bool terminating;
 
@@ -32,8 +34,10 @@ private:
 		pthread_mutex_lock(&mutex);
 
 		while (tasks.empty() && !terminating) {
+			printf("blocking\n"); fflush(stdout);
 			// sleep until addTask notify
 			pthread_cond_wait(&cond, &mutex);
+			printf("wake up\n"); fflush(stdout);
 		}
 
 		if (terminating) {
@@ -103,9 +107,12 @@ public:
 	}
 
 	void terminate() {
+		pthread_mutex_lock(&mutex);
 		terminating = true;
 
-		pthread_cond_broadcast(&cond);	
+		printf("broadcast\n"); fflush(stdout);
+		pthread_cond_broadcast(&cond);
+		pthread_mutex_unlock(&mutex);
 	}
 };
 

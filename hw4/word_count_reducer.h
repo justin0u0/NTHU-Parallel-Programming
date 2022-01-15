@@ -18,6 +18,8 @@ private:
 
   WordCountConfig* config;
 
+  void (*callback)(int, int);
+
   std::vector<ListWordCountKV*>* fetch() {
     std::vector<ListWordCountKV*>* output = new std::vector<ListWordCountKV*>;
     output->reserve(config->numMappers);
@@ -127,7 +129,8 @@ private:
   }
 
 public:
-  WordCountReducer(int id, int taskId, WordCountConfig* config) : id(id), taskId(taskId), config(config) {}
+  WordCountReducer(int id, int taskId, WordCountConfig* config, void (*callback)(int, int))
+    : id(id), taskId(taskId), config(config), callback(callback) {}
 
   static std::string outputFilePath(int taskId, WordCountConfig* config) {
     return config->outputDir + config->jobName + "-" + std::to_string(taskId) + ".out";
@@ -150,6 +153,10 @@ public:
 
     reducer->write(reduceResult);
     // std::cout << "write done" << std::endl;
+
+    (*(reducer->callback))(reducer->id, reducer->taskId);
+
+    delete reducer;
 
     return nullptr;
   }
