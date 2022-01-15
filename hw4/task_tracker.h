@@ -3,6 +3,7 @@
 
 #include <mpi.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "thread_pool.h"
 #include "word_count_mapper.h"
@@ -24,7 +25,7 @@ union PayloadMessage {
 	struct {
 		// mapper/reducer ID
 		int id;
-		
+
 		// task ID
 		// - the chuck ID for the mapper
 		// - the partition ID for the reducer
@@ -73,9 +74,10 @@ private:
 				case TaskType::MAP: {
 					// dispatch mapper task
 
-					WordCountMapper* mapper = new WordCountMapper(resp.data.id, resp.data.taskId, config, &TaskTracker::mapperCallback);
+					WordCountMapper* mapper = new WordCountMapper(resp.data.id, resp.data.taskId, nodeId, config, &TaskTracker::mapperCallback);
 					mapperPool->addTask(new ThreadPoolTask(&WordCountMapper::run, mapper));
 
+					usleep(10000);
 					requestMapperTask();
 
 					break;
@@ -86,6 +88,7 @@ private:
 					WordCountReducer* reducer = new WordCountReducer(resp.data.id, resp.data.taskId, config, &TaskTracker::reducerCallback);
 					reducerPool->addTask(new ThreadPoolTask(&WordCountReducer::run, reducer));
 
+					usleep(10000);
 					requestReducerTask();
 
 					break;

@@ -1,9 +1,9 @@
 #ifndef _JOB_TRACKER_H_
 #define _JOB_TRACKER_H_
 
+#include <list>
 #include <mpi.h>
 #include <pthread.h>
-#include <queue>
 #include <unistd.h>
 
 #include "task_tracker.h"
@@ -12,6 +12,9 @@
 class JobTracker {
 private:
 	WordCountConfig* config;
+
+	// list of task id that has not been dispatch
+	std::list<int> tasks;
 
 	// nodes that request for mapper task
 	std::queue<int> mapperTaskRequests;
@@ -65,6 +68,11 @@ public:
 		pthread_mutex_init(&mutex, 0);
 		pthread_cond_init(&cond, 0);
 
+		// load taskId (chuckId), taskId is between 1 ~ numMappers
+		for (int i = 1; i <= config->numMappers; ++i) {
+			tasks.emplace_back(i);
+		}
+
 		inflightMapperTasks = 0;
 		inflightReducerTasks = 0;
 
@@ -78,8 +86,6 @@ public:
 
 	void run() {
 		pthread_create(&server_t, 0, JobTracker::serve, (void*)this);
-
-		printf("numMappers: %d, numReducers: %d\n", config->numMappers, config->numReducers);
 
 		for (int i = 1; i <= config->numMappers; ++i) {
 			// generate mapper tasks
@@ -97,11 +103,23 @@ public:
 
 			pthread_mutex_unlock(&mutex);
 
+			// find data with locality
+			std::list<int>::iterator it;
+			for (it = tasks.begin(); it != tasks.end(); ++it) {
+				if (config->localityConfig[*it] == nodeId) {
+					break;
+				}
+			}
+
+			// if no matching data with the node, pick the first one
+			if (it == tasks.end()) {
+				it = tasks.begin();
+			}
+
+			int taskId = *it;
+			tasks.erase(it);
+
 			// send event to task tracker
-
-			// TODO: locality aware
-			int taskId = i;
-
 			PayloadMessage req = PayloadMessage{.data = {
 				.id = i,
 				.taskId = taskId,

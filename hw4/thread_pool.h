@@ -22,9 +22,11 @@ private:
 	pthread_t* threads;
 
 	pthread_mutex_t mutex;
-	pthread_cond_t cond;
+	pthread_cond_t addCond;
+	pthread_cond_t removeCond;
 
 	std::queue<ThreadPoolTask*> tasks;
+	const size_t bufferSize = 1;
 
 	bool terminating;
 
@@ -33,7 +35,7 @@ private:
 
 		while (tasks.empty() && !terminating) {
 			// sleep until addTask notify
-			pthread_cond_wait(&cond, &mutex);
+			pthread_cond_wait(&removeCond, &mutex);
 		}
 
 		if (terminating) {
@@ -43,6 +45,7 @@ private:
 
 		ThreadPoolTask* task = tasks.front();
 		tasks.pop();
+		pthread_cond_signal(&addCond);
 
 		pthread_mutex_unlock(&mutex);
 
@@ -72,11 +75,13 @@ public:
 		terminating = false;
 
 		pthread_mutex_init(&mutex, 0);
-		pthread_cond_init(&cond, 0);
+		pthread_cond_init(&addCond, 0);
+		pthread_cond_init(&removeCond, 0);
 	}
 
 	~ThreadPool() {
-		pthread_cond_destroy(&cond);
+		pthread_cond_destroy(&addCond);
+		pthread_cond_destroy(&removeCond);
 		pthread_mutex_destroy(&mutex);
 
 		while (!tasks.empty()) {
@@ -92,8 +97,19 @@ public:
 	void addTask(ThreadPoolTask* task) {
 		pthread_mutex_lock(&mutex);
 
+		while (tasks.size() >= bufferSize && !terminating) {
+			// sleep until removeTask notify
+			pthread_cond_wait(&addCond, &mutex);
+		}
+
+		if (terminating) {
+			pthread_mutex_unlock(&mutex);
+			return;
+		}
+
 		tasks.push(task);
-		pthread_cond_signal(&cond);
+		pthread_cond_signal(&removeCond);
+
 		pthread_mutex_unlock(&mutex);
 	}
 
@@ -113,7 +129,8 @@ public:
 		pthread_mutex_lock(&mutex);
 
 		terminating = true;
-		pthread_cond_broadcast(&cond);
+		pthread_cond_broadcast(&addCond);
+		pthread_cond_broadcast(&removeCond);
 
 		pthread_mutex_unlock(&mutex);
 	}

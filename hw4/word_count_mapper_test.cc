@@ -29,7 +29,7 @@ int main() {
   WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
   for (int i = 1; i <= config->numMappers; ++i) {
-    WordCountMapper* mapper = new WordCountMapper(i, i, config, &callback);
+    WordCountMapper* mapper = new WordCountMapper(i, i, i, config, &callback);
 
     WordCountMapper::run((void*)mapper);
   }

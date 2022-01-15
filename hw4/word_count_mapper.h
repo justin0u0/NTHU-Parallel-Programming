@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <unistd.h>
 #include <utility>
 
 #include "word_count_types.h"
@@ -12,6 +13,7 @@ class WordCountMapper {
 private:
   int id;
   int taskId;
+  int nodeId;
 
   WordCountConfig* config;
 
@@ -19,6 +21,11 @@ private:
 
   std::vector<std::string>* split() {
     std::ifstream f(config->inputFilename);
+
+    // mock reading data from remote
+    if (nodeId != config->localityConfig[taskId]) {
+      sleep(config->delay);
+    }
 
     // read lines [taskId * chuckSize - 1, taskId * chuckSize + chuckSize)
     // so ignores (taskId - 1) * chuckSize lines
@@ -79,8 +86,8 @@ private:
   }
 
 public:
-  WordCountMapper(int id, int taskId, WordCountConfig* config, void (*callback)(int, int))
-    : id(id), taskId(taskId), config(config), callback(callback) {}
+  WordCountMapper(int id, int taskId, int nodeId, WordCountConfig* config, void (*callback)(int, int))
+    : id(id), taskId(taskId), nodeId(nodeId), config(config), callback(callback) {}
 
   static std::string outputFilePath(int taskId, WordCountConfig* config) {
     return config->outputDir + config->jobName + "-" + std::to_string(taskId) + ".temp";

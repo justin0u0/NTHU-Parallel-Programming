@@ -77,7 +77,7 @@ public:
 		std::string& inputFilename, int chunkSize, std::string& localityConfigFilename, std::string& outputDir)
 		: nodes(nodes), cpus(cpus), jobName(jobName), numReducers(numReducers), delay(delay),
 			inputFilename(inputFilename), chunkSize(chunkSize), localityConfigFilename(localityConfigFilename), outputDir(outputDir) {
-		
+
 		numMappers = 0;
 
 		// extend locality config file
@@ -85,6 +85,12 @@ public:
 
 		int taskId, nodeId;
 		while (f >> taskId >> nodeId) {
+			// If the nodeId is larger than the number of worker nodes, mod the nodeId by the number of worker nodes.
+			nodeId = nodeId % (nodes - 1);
+			if (nodeId == 0) {
+				nodeId = nodes - 1;
+			}
+
 			localityConfig.emplace(taskId, nodeId);
 
 			// each line in the locality config file represents a data chuck
