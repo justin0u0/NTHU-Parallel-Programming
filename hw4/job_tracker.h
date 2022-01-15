@@ -33,9 +33,7 @@ private:
 		MPI_Status status;
 
 		while (jobTracker->workingTaskTrackers != 0) {
-			// printf("[JobTracker::serve] waiting for resource\n");
 			MPI_Recv(resp.raw, 3, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
-			printf("[JobTracker::serve] get resource %d %d %d\n", resp.data.type, resp.data.id, resp.data.taskId);
 
 			pthread_mutex_lock(&jobTracker->mutex);
 			switch (resp.data.type) {
@@ -109,7 +107,6 @@ public:
 				.taskId = taskId,
 				.type = TaskType::MAP
 			}};
-			printf("[JobTracker::run] sending new mapper task %d %d %d\n", req.data.id, req.data.taskId, req.data.type);
 
 			MPI_Send(req.raw, 3, MPI_INT, nodeId, 0, MPI_COMM_WORLD);
 		}
@@ -143,7 +140,6 @@ public:
 				.type = TaskType::REDUCE
 			}};
 
-			printf("[JobTracker::run] sending new reducer task %d %d %d\n", req.data.id, req.data.taskId, req.data.type);
 			MPI_Send(req.raw, 3, MPI_INT, nodeId, 0, MPI_COMM_WORLD);
 		}
 
@@ -151,7 +147,6 @@ public:
 			usleep(1000);
 		}
 
-		printf("[JobTracker::run] terminating\n");
 		PayloadMessage req = PayloadMessage{.data = {
 			.type = TaskType::TERMINATE
 		}};
@@ -160,7 +155,6 @@ public:
 		}
 
 		pthread_join(server_t, 0);
-		printf("[JobTracker::run] done\n");
 	}
 };
 

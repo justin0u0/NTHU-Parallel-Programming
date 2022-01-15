@@ -3,7 +3,6 @@
 
 #include <pthread.h>
 #include <queue>
-#include <stdio.h>
 
 class ThreadPool;
 
@@ -26,7 +25,6 @@ private:
 	pthread_cond_t cond;
 
 	std::queue<ThreadPoolTask*> tasks;
-	const size_t size = 1;
 
 	bool terminating;
 
@@ -34,13 +32,12 @@ private:
 		pthread_mutex_lock(&mutex);
 
 		while (tasks.empty() && !terminating) {
-			printf("blocking\n"); fflush(stdout);
 			// sleep until addTask notify
 			pthread_cond_wait(&cond, &mutex);
-			printf("wake up\n"); fflush(stdout);
 		}
 
 		if (terminating) {
+			pthread_mutex_unlock(&mutex);
 			return nullptr;
 		}
 
@@ -81,7 +78,14 @@ public:
 	~ThreadPool() {
 		pthread_cond_destroy(&cond);
 		pthread_mutex_destroy(&mutex);
-		
+
+		while (!tasks.empty()) {
+			ThreadPoolTask* task = tasks.front();
+			tasks.pop();
+
+			delete task;
+		}
+
 		delete[] threads;
 	}
 
@@ -90,7 +94,6 @@ public:
 
 		tasks.push(task);
 		pthread_cond_signal(&cond);
-
 		pthread_mutex_unlock(&mutex);
 	}
 
@@ -108,10 +111,10 @@ public:
 
 	void terminate() {
 		pthread_mutex_lock(&mutex);
-		terminating = true;
 
-		printf("broadcast\n"); fflush(stdout);
+		terminating = true;
 		pthread_cond_broadcast(&cond);
+
 		pthread_mutex_unlock(&mutex);
 	}
 };

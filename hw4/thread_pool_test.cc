@@ -28,11 +28,12 @@ int main() {
 
 	sleep(10);
 
-	printf("terminating\n"); fflush(stdout);
 	pool->terminate();
-	printf("done terminating\n"); fflush(stdout);
 	pool->join();
-	printf("done.\n"); fflush(stdout);
 
 	delete[] arr;
+	
+	delete pool;
+
+	return 0;
 }

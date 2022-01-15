@@ -51,14 +51,12 @@ private:
 	void requestMapperTask() {
 		PayloadMessage req = {.data = {.type = TaskType::MAP}};
 
-		printf("[TaskTracker::requestMapperTask]: request for a mapper task\n");
 		MPI_Send(req.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
 	}
 
 	void requestReducerTask() {
 		PayloadMessage req = {.data = {.type = TaskType::REDUCE}};
 
-		printf("[TaskTracker::requestReducerTask]: request for a reducer task\n");
 		MPI_Send(req.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
 	}
 
@@ -93,7 +91,6 @@ private:
 					break;
 				}
 				case TaskType::TERMINATE: {
-					printf("[TaskTracker::serve] terminating\n");
 					terminating = true;
 					break;
 				}
@@ -119,21 +116,17 @@ public:
 
 		serve();
 
-		printf("[TaskTracker::run] terminating mapperPool\n");
 		mapperPool->terminate();
-		mapperPool->join();
+		reducerPool->terminate();
 
-		printf("[TaskTracker::run] terminating reducerPool\n");
-		// reducerPool->terminate();
-		// reducerPool->join();
+		mapperPool->join();
+		reducerPool->join();
 
 		PayloadMessage req = {.data = {.type = TaskType::TERMINATE}};
 		MPI_Send(req.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
 	}
 
 	static void mapperCallback(int id, int taskId) {
-		printf("callback from mapper %d %d\n", id, taskId);
-
 		PayloadMessage req = PayloadMessage{.data = {
 			.id = id,
 			.taskId = taskId,
@@ -144,8 +137,6 @@ public:
 	}
 
 	static void reducerCallback(int id, int taskId) {
-		printf("callback from reducer %d %d\n", id, taskId);
-
 		PayloadMessage req = PayloadMessage{.data = {
 			.id = id,
 			.taskId = taskId,
