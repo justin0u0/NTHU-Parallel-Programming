@@ -2,6 +2,7 @@
 #define _TASK_TRACKER_H_
 
 #include <mpi.h>
+#include <mutex>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -104,6 +105,11 @@ public:
   }
 
   static void callback(MessageType type, int id, int taskId, int data) {
+    static std::mutex mutex;
+
+    // make callback atomic function
+    std::lock_guard<std::mutex> lock(mutex);
+
     Message req = Message{.data = {
       .type = type,
       .id = id,
