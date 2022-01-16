@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <vector>
 
-#include "word_count_reducer.h"
+#include "reducer.h"
 
 void callback(int id, int taskId) {
   printf("callback from id %d done task %d\n", id, taskId);
@@ -26,12 +26,12 @@ int main() {
   std::string localityConfigFilename = "./ta/testcases/01.loc";
   std::string outputDir = "./tests/";
 
-	WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
+	Config* config = new Config(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
 	for (int i = 0; i < config->numReducers; ++i) {
-		WordCountReducer* reducer = new WordCountReducer(i + 1, i, config, &callback);
+		Reducer* reducer = new Reducer(i + 1, i, config, &callback);
 
-		WordCountReducer::run((void*)reducer);
+		Reducer::run((void*)reducer);
 	}
 
 	delete config;

@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <fstream>
 
-#include "word_count_mapper.h"
+#include "mapper.h"
 
 void callback(int id, int taskId) {
   printf("callback from id %d done task %d\n", id, taskId);
@@ -26,12 +26,12 @@ int main() {
   std::string localityConfigFilename = "./ta/testcases/01.loc";
   std::string outputDir = "./tests/";
 
-  WordCountConfig* config = new WordCountConfig(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
+  Config* config = new Config(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
   for (int i = 1; i <= config->numMappers; ++i) {
-    WordCountMapper* mapper = new WordCountMapper(i, i, i, config, &callback);
+    Mapper* mapper = new Mapper(i, i, i, config, &callback);
 
-    WordCountMapper::run((void*)mapper);
+    Mapper::run((void*)mapper);
   }
 
   delete config;

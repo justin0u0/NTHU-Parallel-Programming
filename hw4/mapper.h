@@ -1,5 +1,5 @@
-#ifndef _WORD_COUNT_MAPPER_H_
-#define _WORD_COUNT_MAPPER_H_
+#ifndef _MAPPER_H_
+#define _MAPPER_H_
 
 #include <fstream>
 #include <iostream>
@@ -7,17 +7,17 @@
 #include <unistd.h>
 #include <utility>
 
-#include "word_count_types.h"
+#include "types.h"
 
-class WordCountMapper {
+class Mapper {
 private:
   int id;
   int taskId;
   int nodeId;
 
-  WordCountConfig* config;
+  Config* config;
 
-  void (*callback)(int, int);
+  CallbackFunc callback;
 
   std::vector<std::string>* split() {
     std::ifstream f(config->inputFilename);
@@ -50,8 +50,8 @@ private:
     return output;
   }
 
-  VectorWordCountKV* map(std::vector<std::string>* input) {
-    VectorWordCountKV* output = new VectorWordCountKV;
+  VectorKV* map(std::vector<std::string>* input) {
+    VectorKV* output = new VectorKV;
     output->reserve(input->size());
 
     for (const std::string& s : (*input)) {
@@ -63,10 +63,10 @@ private:
     return output;
   }
 
-  MultimapWordCountKVInt* partition(VectorWordCountKV* input) {
-    MultimapWordCountKVInt* output = new MultimapWordCountKVInt;
+  MultimapKVInt* partition(VectorKV* input) {
+    MultimapKVInt* output = new MultimapKVInt;
 
-    for (const WordCountKV& kv : (*input)) {
+    for (const KV& kv : (*input)) {
       output->emplace(kv, kv.hash(config->numReducers));
     }
 
@@ -75,8 +75,8 @@ private:
     return output;
   }
 
-  void write(MultimapWordCountKVInt* input) {
-    std::ofstream f(WordCountMapper::outputFilePath(taskId, config));
+  void write(MultimapKVInt* input) {
+    std::ofstream f(config->mapperOutFilename(taskId));
 
     for (const auto& kvi : (*input)) {
       f << kvi.second << ' ' << kvi.first.key << ' ' << kvi.first.value << '\n';
@@ -86,31 +86,29 @@ private:
   }
 
 public:
-  WordCountMapper(int id, int taskId, int nodeId, WordCountConfig* config, void (*callback)(int, int))
+  Mapper(int id, int taskId, int nodeId, Config* config, CallbackFunc callback)
     : id(id), taskId(taskId), nodeId(nodeId), config(config), callback(callback) {}
 
-  static std::string outputFilePath(int taskId, WordCountConfig* config) {
-    return config->outputDir + config->jobName + "-" + std::to_string(taskId) + ".temp";
-  }
-
   static void* run(void* arg) {
-    WordCountMapper* mapper = (WordCountMapper*)arg;
-    // std::cout << "[WordCountMapper::run]: " << mapper->id << " mapper start" << std::endl;
+    Mapper* mapper = (Mapper*)arg;
+    // std::cout << "[Mapper::run]: " << mapper->id << " mapper start" << std::endl;
 
     std::vector<std::string>* splitResult = mapper->split();
-    // std::cout << "[WordCountMapper::run]: " << mapper->id << " split done" << std::endl;
+    // std::cout << "[Mapper::run]: " << mapper->id << " split done" << std::endl;
 
-    VectorWordCountKV* mapResult = mapper->map(splitResult);
-    // std::cout << "[WordCountMapper::run]: " << mapper->id << " map done" << std::endl;
+    VectorKV* mapResult = mapper->map(splitResult);
+    // std::cout << "[Mapper::run]: " << mapper->id << " map done" << std::endl;
+    int totalKeys = (int)mapResult->size();
 
-    MultimapWordCountKVInt* partitionResult = mapper->partition(mapResult);
-    // std::cout << "[WordCountMapper::run]: " << mapper->id << " partition done" << std::endl;
+    MultimapKVInt* partitionResult = mapper->partition(mapResult);
+    // std::cout << "[Mapper::run]: " << mapper->id << " partition done" << std::endl;
 
+    (*(mapper->callback))(MessageType::SHUFFLE, mapper->id, mapper->taskId, totalKeys);
     mapper->write(partitionResult);
-    // std::cout << "[WordCountMapper::run]: " << mapper->id << " write done" << std::endl;
+    // std::cout << "[Mapper::run]: " << mapper->id << " write done" << std::endl;
 
-    (*(mapper->callback))(mapper->id, mapper->taskId);
-    // std::cout << "[WordCountMapper::run]: " << mapper->id << " callback done" << std::endl;
+    (*(mapper->callback))(MessageType::MAP_DONE, mapper->id, mapper->taskId, 0);
+    // std::cout << "[Mapper::run]: " << mapper->id << " callback done" << std::endl;
 
     delete mapper;
 
@@ -118,4 +116,4 @@ public:
   }
 };
 
-#endif  // _WORD_COUNT_MAPPER_H_
+#endif  // _MAPPER_H_

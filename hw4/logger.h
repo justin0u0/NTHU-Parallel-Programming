@@ -13,6 +13,7 @@ private:
 	bool withStdout;
 public:
 	enum class Level {
+		NONE,
 		INFO,
 		DEBUG
 	};
@@ -38,7 +39,7 @@ public:
 		delete ofs;
 	}
 
-	std::ostream& With(Level level) {
+	std::ostream& Log(Level level = Level::NONE) {
 		std::ostream& out = (*os);
 
 		auto now = std::chrono::system_clock::now().time_since_epoch();

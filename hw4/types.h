@@ -1,5 +1,5 @@
-#ifndef _WORD_COUNT_TYPES_H_
-#define _WORD_COUNT_TYPES_H_
+#ifndef _TYPES_H_
+#define _TYPES_H_
 
 #include <list>
 #include <map>
@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-class WordCountConfig {
+class Config {
 public:
 	// Number of nodes, specified by TA. One of the nodes will act as the
 	// jobtracker, and the rest of the nodes will act as the tasktrackers.
@@ -73,7 +73,7 @@ public:
 
 	LocalityConfig localityConfig;
 
-	WordCountConfig(int nodes, int cpus, std::string& jobName, int numReducers, int delay,
+	Config(int nodes, int cpus, std::string& jobName, int numReducers, int delay,
 		std::string& inputFilename, int chunkSize, std::string& localityConfigFilename, std::string& outputDir)
 		: nodes(nodes), cpus(cpus), jobName(jobName), numReducers(numReducers), delay(delay),
 			inputFilename(inputFilename), chunkSize(chunkSize), localityConfigFilename(localityConfigFilename), outputDir(outputDir) {
@@ -97,22 +97,34 @@ public:
 			++numMappers;
 		}
 	}
+
+	std::string logFilename() {
+		return outputDir + jobName + "-log.out";
+	}
+
+	std::string mapperOutFilename(int taskId) {
+		return outputDir + jobName + "-" + std::to_string(taskId) + ".temp";
+	}
+	
+	std::string reducerOutFilename(int taskId) {
+    return outputDir + jobName + "-" + std::to_string(taskId) + ".out";
+	}
 };
 
-class WordCountKV {
+class KV {
 private:
 	unsigned int hashCode;
 public:
 	std::string key;
 	int value;
 
-	WordCountKV() {}
+	KV() {}
 
-	WordCountKV(const std::string& key, int value) : key(key), value(value) {
+	KV(const std::string& key, int value) : key(key), value(value) {
 		hashCode = std::hash<std::string>()(key);
 	}
 
-	bool operator < (const WordCountKV& rhs) const {
+	bool operator < (const KV& rhs) const {
 		return key.compare(rhs.key) < 0;
 	}
 
@@ -121,25 +133,59 @@ public:
 	}
 };
 
-typedef std::list<WordCountKV> ListWordCountKV;
-typedef std::vector<WordCountKV> VectorWordCountKV;
-typedef std::pair<WordCountKV, int> PairWordCountKVInt;
-typedef std::multimap<WordCountKV, int> MultimapWordCountKVInt;
+typedef std::list<KV> ListKV;
+typedef std::vector<KV> VectorKV;
+typedef std::pair<KV, int> PairKVInt;
+typedef std::multimap<KV, int> MultimapKVInt;
 
-class WordCountKVs {
+class KVs {
 public:
 	std::string key;
 	std::vector<int> values;
 
-	WordCountKVs() {}
+	KVs() {}
 
-	WordCountKVs(const std::string& key) : key(key) {}
+	KVs(const std::string& key) : key(key) {}
 
-	int compare(const WordCountKV& b) {
+	int compare(const KV& b) {
 		return key.compare(b.key);
 	}
 };
 
-typedef std::vector<WordCountKVs> VectorWordCountKVs;
+typedef std::vector<KVs> VectorKVs;
 
-#endif // _WORD_COUNT_TYPES_H_
+enum class MessageType : int {
+	MAP,
+	SHUFFLE,
+	REDUCE,
+	MAP_DONE,
+	SHUFFLE_DONE,
+	REDUCE_DONE,
+	TERMINATE
+};
+
+#define MESSAGE_SIZE 4
+
+// Message defines the message send between task tracker and job tracker
+union Message {
+	struct {
+		MessageType type;
+
+		// mapper/reducer ID
+		int id;
+
+		// task ID
+		// - the chuck ID for the mapper
+		// - the partition ID for the reducer
+		int taskId;
+
+		// aditional data carried
+		int data;
+	} data;
+
+	int raw[MESSAGE_SIZE];
+};
+
+typedef void (*CallbackFunc)(MessageType, int, int, int);
+
+#endif // _TYPES_H_

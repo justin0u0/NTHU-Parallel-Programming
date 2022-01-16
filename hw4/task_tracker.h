@@ -6,43 +6,17 @@
 #include <unistd.h>
 
 #include "thread_pool.h"
-#include "word_count_mapper.h"
-#include "word_count_reducer.h"
-#include "word_count_types.h"
+#include "mapper.h"
+#include "reducer.h"
+#include "types.h"
 
 #define JOB_TRACKER_NODE 0
-
-enum class TaskType : int {
-	MAP,
-	REDUCE,
-	MAP_DONE,
-	REDUCE_DONE,
-	TERMINATE
-};
-
-// the payload message send between task tracker & job tracker for convinience
-union PayloadMessage {
-	struct {
-		// mapper/reducer ID
-		int id;
-
-		// task ID
-		// - the chuck ID for the mapper
-		// - the partition ID for the reducer
-		int taskId;
-
-		// operation type
-		TaskType type;
-	} data;
-
-	int raw[3];
-};
 
 class TaskTracker {
 private:
 	int nodeId;
 
-	WordCountConfig* config;
+	Config* config;
 
 	ThreadPool* mapperPool;
 	ThreadPool* reducerPool;
@@ -50,50 +24,50 @@ private:
 	bool terminating;
 
 	void requestMapperTask() {
-		PayloadMessage req = {.data = {.type = TaskType::MAP}};
+		Message req = {.data = {.type = MessageType::MAP}};
 
-		MPI_Send(req.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
+		MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
 	}
 
 	void requestReducerTask() {
-		PayloadMessage req = {.data = {.type = TaskType::REDUCE}};
+		Message req = {.data = {.type = MessageType::REDUCE}};
 
-		MPI_Send(req.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
+		MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
 	}
 
 	void serve() {
 		requestMapperTask();
 		requestReducerTask();
 
-		PayloadMessage resp;
+		Message resp;
 
 		while (!terminating) {
-			MPI_Recv(resp.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			MPI_Recv(resp.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 			switch (resp.data.type) {
-				case TaskType::MAP: {
+				case MessageType::MAP: {
 					// dispatch mapper task
 
-					WordCountMapper* mapper = new WordCountMapper(resp.data.id, resp.data.taskId, nodeId, config, &TaskTracker::mapperCallback);
-					mapperPool->addTask(new ThreadPoolTask(&WordCountMapper::run, mapper));
+					Mapper* mapper = new Mapper(resp.data.id, resp.data.taskId, nodeId, config, &TaskTracker::callback);
+					mapperPool->addTask(new ThreadPoolTask(&Mapper::run, mapper));
 
 					usleep(10000);
 					requestMapperTask();
 
 					break;
 				}
-				case TaskType::REDUCE: {
+				case MessageType::REDUCE: {
 					// dispatch reducer task
 
-					WordCountReducer* reducer = new WordCountReducer(resp.data.id, resp.data.taskId, config, &TaskTracker::reducerCallback);
-					reducerPool->addTask(new ThreadPoolTask(&WordCountReducer::run, reducer));
+					Reducer* reducer = new Reducer(resp.data.id, resp.data.taskId, config, &TaskTracker::callback);
+					reducerPool->addTask(new ThreadPoolTask(&Reducer::run, reducer));
 
 					usleep(10000);
 					requestReducerTask();
 
 					break;
 				}
-				case TaskType::TERMINATE: {
+				case MessageType::TERMINATE: {
 					terminating = true;
 					break;
 				}
@@ -101,7 +75,7 @@ private:
 		}
 	}
 public:
-	TaskTracker(int nodeId, WordCountConfig* config) : nodeId(nodeId), config(config) {
+	TaskTracker(int nodeId, Config* config) : nodeId(nodeId), config(config) {
 		mapperPool = new ThreadPool(config->cpus - 1);
 		reducerPool = new ThreadPool(1);
 
@@ -125,28 +99,19 @@ public:
 		mapperPool->join();
 		reducerPool->join();
 
-		PayloadMessage req = {.data = {.type = TaskType::TERMINATE}};
-		MPI_Send(req.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
+		Message req = {.data = {.type = MessageType::TERMINATE}};
+		MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
 	}
 
-	static void mapperCallback(int id, int taskId) {
-		PayloadMessage req = PayloadMessage{.data = {
+	static void callback(MessageType type, int id, int taskId, int data) {
+		Message req = Message{.data = {
+			.type = type,
 			.id = id,
 			.taskId = taskId,
-			.type = TaskType::MAP_DONE
+			.data = data
 		}};
 
-		MPI_Send(req.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
-	}
-
-	static void reducerCallback(int id, int taskId) {
-		PayloadMessage req = PayloadMessage{.data = {
-			.id = id,
-			.taskId = taskId,
-			.type = TaskType::REDUCE_DONE
-		}};
-
-		MPI_Send(req.raw, 3, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
+		MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
 	}
 };
 

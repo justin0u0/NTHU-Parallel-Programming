@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
   std::string localityConfigFilename = std::string(argv[6]);
   std::string outputDir = std::string(argv[7]);
 
-	WordCountConfig* config = new WordCountConfig(nodes, cpus, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
+	Config* config = new Config(nodes, cpus, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
 	if (rank == 0) {
 		JobTracker* jobTracker = new JobTracker(config);

@@ -1,14 +1,14 @@
-#ifndef _WORD_COUNT_REDUCER_H_
-#define _WORD_COUNT_REDUCER_H_
+#ifndef _REDUCER_H_
+#define _REDUCER_H_
 
 #include <fstream>
 #include <iostream>
 #include <vector>
 
-#include "word_count_mapper.h"
-#include "word_count_types.h"
+#include "mapper.h"
+#include "types.h"
 
-class WordCountReducer {
+class Reducer {
 private:
   // the ID of the reducer, range from 1 ~ config->numReducers
   int id;
@@ -16,16 +16,16 @@ private:
   // for matching the partition key
   int taskId;
 
-  WordCountConfig* config;
+  Config* config;
 
-  void (*callback)(int, int);
+  CallbackFunc callback;
 
-  std::vector<ListWordCountKV*>* fetch() {
-    std::vector<ListWordCountKV*>* output = new std::vector<ListWordCountKV*>;
+  std::vector<ListKV*>* fetch() {
+    std::vector<ListKV*>* output = new std::vector<ListKV*>;
     output->reserve(config->numMappers);
 
     for (int i = 1; i <= config->numMappers; ++i) {
-      std::string filename = WordCountMapper::outputFilePath(i, config);
+      std::string filename = config->mapperOutFilename(i);
       std::ifstream f(filename);
 
       // the partition hash will be in the range of 0 ~ config->numReducers-1
@@ -33,7 +33,7 @@ private:
       std::string key;
       int value;
 
-      ListWordCountKV* data = new ListWordCountKV;
+      ListKV* data = new ListKV;
 
       while (f >> partitionId >> key >> value) {
         if (partitionId == taskId) {
@@ -47,19 +47,19 @@ private:
     return output;
   }
 
-  VectorWordCountKV* merge(std::vector<ListWordCountKV*>* input) {
+  VectorKV* merge(std::vector<ListKV*>* input) {
     int len = (int)input->size();
 
     for (int i = 1; i < len; i <<= 1) {
       for (int j = 0; j + i < len; j += (i << 1)) {
         // inplace merge list[j] and list[j + i] into list[j]
 
-        ListWordCountKV* lhs = input->at(j);
-        ListWordCountKV* rhs = input->at(j + i);
+        ListKV* lhs = input->at(j);
+        ListKV* rhs = input->at(j + i);
 
-        ListWordCountKV::iterator rit = rhs->begin();
+        ListKV::iterator rit = rhs->begin();
 
-        for (ListWordCountKV::iterator lit = lhs->begin(); lit != lhs->end(); ++lit) {
+        for (ListKV::iterator lit = lhs->begin(); lit != lhs->end(); ++lit) {
           while (rit != rhs->end() && (*rit) < (*lit)) {
             lhs->emplace(lit, *rit);
             ++rit;
@@ -75,8 +75,8 @@ private:
       }
     }
 
-    ListWordCountKV* l = input->at(0);
-    VectorWordCountKV* output = new VectorWordCountKV(l->begin(), l->end());
+    ListKV* l = input->at(0);
+    VectorKV* output = new VectorKV(l->begin(), l->end());
 
     delete l;
     delete input;
@@ -84,10 +84,10 @@ private:
     return output;
   }
 
-  VectorWordCountKVs* group(VectorWordCountKV* input) {
-    VectorWordCountKVs* output = new VectorWordCountKVs;
+  VectorKVs* group(VectorKV* input) {
+    VectorKVs* output = new VectorKVs;
 
-    for (const WordCountKV& kv : (*input)) {
+    for (const KV& kv : (*input)) {
       if (output->empty() || output->back().compare(kv) != 0) {
         output->emplace_back(kv.key);
       }
@@ -99,11 +99,11 @@ private:
     return output;
   }
 
-  VectorWordCountKV* reduce(VectorWordCountKVs* input) {
-    VectorWordCountKV* output = new VectorWordCountKV;
+  VectorKV* reduce(VectorKVs* input) {
+    VectorKV* output = new VectorKV;
     output->reserve(input->size());
 
-    for (const WordCountKVs& kvs : (*input)) {
+    for (const KVs& kvs : (*input)) {
       // reduce by sum aggregation
       int sum = 0;
       for (int value : kvs.values) {
@@ -117,11 +117,11 @@ private:
     return output;
   }
 
-  void write(VectorWordCountKV* input) {
-    std::string filename = WordCountReducer::outputFilePath(id, config);
+  void write(VectorKV* input) {
+    std::string filename = config->reducerOutFilename(taskId);
     std::ofstream f(filename);
 
-    for (const WordCountKV& kv : (*input)) {
+    for (const KV& kv : (*input)) {
       f << kv.key << ' ' << kv.value << '\n';
     }
 
@@ -129,32 +129,28 @@ private:
   }
 
 public:
-  WordCountReducer(int id, int taskId, WordCountConfig* config, void (*callback)(int, int))
+  Reducer(int id, int taskId, Config* config, CallbackFunc callback)
     : id(id), taskId(taskId), config(config), callback(callback) {}
 
-  static std::string outputFilePath(int taskId, WordCountConfig* config) {
-    return config->outputDir + config->jobName + "-" + std::to_string(taskId) + ".out";
-  }
-
   static void* run(void* arg) {
-    WordCountReducer* reducer = (WordCountReducer*)arg;
+    Reducer* reducer = (Reducer*)arg;
 
-    std::vector<ListWordCountKV*>* fetchResult = reducer->fetch();
+    std::vector<ListKV*>* fetchResult = reducer->fetch();
     // std::cout << "fetch done" << std::endl;
 
-    VectorWordCountKV* mergeResult = reducer->merge(fetchResult);
+    VectorKV* mergeResult = reducer->merge(fetchResult);
     // std::cout << "merge done" << std::endl;
 
-    VectorWordCountKVs* groupResult = reducer->group(mergeResult);
+    VectorKVs* groupResult = reducer->group(mergeResult);
     // std::cout << "group done" << std::endl;
 
-    VectorWordCountKV* reduceResult = reducer->reduce(groupResult);
+    VectorKV* reduceResult = reducer->reduce(groupResult);
     // std::cout << "reduce done" << std::endl;
 
     reducer->write(reduceResult);
     // std::cout << "write done" << std::endl;
 
-    (*(reducer->callback))(reducer->id, reducer->taskId);
+    (*(reducer->callback))(MessageType::REDUCE_DONE, reducer->id, reducer->taskId, 0);
 
     delete reducer;
 
@@ -162,4 +158,4 @@ public:
   }
 };
 
-#endif  // _WORD_COUNT_REDUCER_H_
+#endif  // _REDUCER_H_
