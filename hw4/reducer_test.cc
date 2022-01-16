@@ -2,9 +2,10 @@
 #include <vector>
 
 #include "reducer.h"
+#include "types.h"
 
-void callback(int id, int taskId) {
-  printf("callback from id %d done task %d\n", id, taskId);
+void callback(MessageType type, int id, int taskId, int data) {
+  printf("callback from id %d done task %d with data %d\n", id, taskId, data);
 }
 
 int main() {

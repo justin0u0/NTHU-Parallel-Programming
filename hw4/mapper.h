@@ -1,6 +1,7 @@
 #ifndef _MAPPER_H_
 #define _MAPPER_H_
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -91,6 +92,7 @@ public:
 
   static void* run(void* arg) {
     Mapper* mapper = (Mapper*)arg;
+    std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
     // std::cout << "[Mapper::run]: " << mapper->id << " mapper start" << std::endl;
 
     std::vector<std::string>* splitResult = mapper->split();
@@ -107,7 +109,9 @@ public:
     mapper->write(partitionResult);
     // std::cout << "[Mapper::run]: " << mapper->id << " write done" << std::endl;
 
-    (*(mapper->callback))(MessageType::MAP_DONE, mapper->id, mapper->taskId, 0);
+		auto elapsed = std::chrono::system_clock::now() - start;
+    int duration = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+    (*(mapper->callback))(MessageType::MAP_DONE, mapper->id, mapper->taskId, duration);
     // std::cout << "[Mapper::run]: " << mapper->id << " callback done" << std::endl;
 
     delete mapper;

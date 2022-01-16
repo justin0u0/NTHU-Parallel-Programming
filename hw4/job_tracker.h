@@ -27,9 +27,11 @@ private:
 	int inflightReducerTasks;
 	int workingTaskTrackers;
 	int totalMapperKeys;
+	int totalShuffleStarts;
+	int totalShuffleEnds;
 
-	std::chrono::time_point<std::chrono::system_clock> startTime;
-	std::chrono::time_point<std::chrono::system_clock> shuffleStartTime;
+	std::chrono::time_point<std::chrono::system_clock> start;
+	std::chrono::time_point<std::chrono::system_clock> shuffleStart;
 
 	pthread_t server_t;
 	pthread_mutex_t mutex;
@@ -54,8 +56,10 @@ private:
 					break;
 				case MessageType::SHUFFLE:
 					jt->totalMapperKeys += resp.data.data;
-					if (jt->shuffleStartTime == jt->startTime) {
-						jt->shuffleStartTime = std::chrono::system_clock::now();
+					++jt->totalShuffleStarts;
+					if (jt->totalShuffleStarts == jt->config->numMappers) {
+						jt->shuffleStart = std::chrono::system_clock::now();
+						jt->logger->Log() << "Start_Shuffle," << jt->totalMapperKeys << std::endl;
 					}
 					break;
 				case MessageType::REDUCE:
@@ -64,10 +68,18 @@ private:
 					break;
 				case MessageType::MAP_DONE:
 					--jt->inflightMapperTasks;
-					jt->logger->Log() << "Complete_MapTask," << resp.data.taskId << ',' << std::endl;
+					jt->logger->Log() << "Complete_MapTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
+					break;
+				case MessageType::SHUFFLE_DONE:
+					++jt->totalShuffleEnds;
+					if (jt->totalShuffleEnds == jt->config->numReducers) {
+						auto elapsed = std::chrono::system_clock::now() - jt->shuffleStart;
+						jt->logger->Log() << "Finish_Shuffle," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
+					}
 					break;
 				case MessageType::REDUCE_DONE:
 					--jt->inflightReducerTasks;
+					jt->logger->Log() << "Complete_ReduceTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
 					break;
 				case MessageType::TERMINATE:
 					--jt->workingTaskTrackers;
@@ -92,9 +104,10 @@ public:
 		inflightReducerTasks = 0;
 		workingTaskTrackers = config->nodes - 1;
 		totalMapperKeys = 0;
+		totalShuffleStarts = 0;
+		totalShuffleEnds = 0;
 
-		startTime = std::chrono::system_clock::now();
-		shuffleStartTime = startTime;
+		start = std::chrono::system_clock::now();
 
 		logger = new Logger(config->logFilename());
 	}
@@ -202,6 +215,9 @@ public:
 		}
 
 		pthread_join(server_t, 0);
+
+		auto elapsed = std::chrono::system_clock::now() - start;
+		logger->Log() << "Finish_Job," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
 	}
 };
 

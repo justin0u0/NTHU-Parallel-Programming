@@ -1,6 +1,7 @@
 #ifndef _REDUCER_H_
 #define _REDUCER_H_
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -135,7 +136,10 @@ public:
   static void* run(void* arg) {
     Reducer* reducer = (Reducer*)arg;
 
+    std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
+
     std::vector<ListKV*>* fetchResult = reducer->fetch();
+    (*(reducer->callback))(MessageType::SHUFFLE_DONE, reducer->id, reducer->taskId, 0);
     // std::cout << "fetch done" << std::endl;
 
     VectorKV* mergeResult = reducer->merge(fetchResult);
@@ -150,7 +154,9 @@ public:
     reducer->write(reduceResult);
     // std::cout << "write done" << std::endl;
 
-    (*(reducer->callback))(MessageType::REDUCE_DONE, reducer->id, reducer->taskId, 0);
+		auto elapsed = std::chrono::system_clock::now() - start;
+    int duration = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+    (*(reducer->callback))(MessageType::REDUCE_DONE, reducer->id, reducer->taskId, duration);
 
     delete reducer;
 
