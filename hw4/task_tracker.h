@@ -51,7 +51,7 @@ private:
           Mapper* mapper = new Mapper(resp.data.id, resp.data.taskId, nodeId, config, &TaskTracker::callback);
           mapperPool->addTask(new ThreadPoolTask(&Mapper::run, mapper));
 
-          usleep(10000);
+          usleep(100000);
           requestMapperTask();
 
           break;
@@ -62,7 +62,7 @@ private:
           Reducer* reducer = new Reducer(resp.data.id, resp.data.taskId, config, &TaskTracker::callback);
           reducerPool->addTask(new ThreadPoolTask(&Reducer::run, reducer));
 
-          usleep(10000);
+          usleep(100000);
           requestReducerTask();
 
           break;

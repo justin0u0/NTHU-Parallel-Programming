@@ -3,11 +3,11 @@
 int main() {
   Logger* logger = new Logger;
 
-  logger->Log(Logger::Level::INFO) << "hello" << std::endl;
+  logger->log(Logger::Level::INFO) << "hello" << std::endl;
 
   Logger* fileLogger = new Logger("./tests/logger_test.log");
 
-  fileLogger->Log() << "hello" << std::endl;
+  filelogger->log() << "hello" << std::endl;
 
   delete logger;
   delete fileLogger;

@@ -59,7 +59,7 @@ private:
           ++jt->totalShuffleStarts;
           if (jt->totalShuffleStarts == jt->config->numMappers) {
             jt->shuffleStart = std::chrono::system_clock::now();
-            jt->logger->Log() << "Start_Shuffle," << jt->totalMapperKeys << std::endl;
+            jt->logger->log() << "Start_Shuffle," << jt->totalMapperKeys << std::endl;
           }
           break;
         case MessageType::REDUCE:
@@ -68,18 +68,18 @@ private:
           break;
         case MessageType::MAP_DONE:
           --jt->inflightMapperTasks;
-          jt->logger->Log() << "Complete_MapTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
+          jt->logger->log() << "Complete_MapTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
           break;
         case MessageType::SHUFFLE_DONE:
           ++jt->totalShuffleEnds;
           if (jt->totalShuffleEnds == jt->config->numReducers) {
             auto elapsed = std::chrono::system_clock::now() - jt->shuffleStart;
-            jt->logger->Log() << "Finish_Shuffle," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
+            jt->logger->log() << "Finish_Shuffle," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
           }
           break;
         case MessageType::REDUCE_DONE:
           --jt->inflightReducerTasks;
-          jt->logger->Log() << "Complete_ReduceTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
+          jt->logger->log() << "Complete_ReduceTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
           break;
         case MessageType::TERMINATE:
           --jt->workingTaskTrackers;
@@ -109,7 +109,7 @@ public:
 
     start = std::chrono::system_clock::now();
 
-    logger = new Logger(config->logFilename());
+    logger = new Logger(config->logFilename(), Logger::Level::INFO);
   }
 
   ~JobTracker() {
@@ -120,7 +120,7 @@ public:
   }
 
   void run() {
-    logger->Log() << "Start_Job," << config->jobName << ',' << config->nodes << ','
+    logger->log() << "Start_Job," << config->jobName << ',' << config->nodes << ','
       << config->cpus << ',' << config->numReducers << ',' << config->delay << ','
       << config->inputFilename << ',' << config->chunkSize << ','
       << config->localityConfigFilename << ',' << config->outputDir << std::endl;
@@ -166,7 +166,8 @@ public:
         .taskId = taskId
       }};
 
-      logger->Log() << "Dispatch_MapTask," << taskId << ',' << i << std::endl;
+      logger->log() << "Dispatch_MapTask," << taskId << ',' << i << std::endl;
+      // logger->log(Logger::Level::DEBUG) << "With_Locality," << (config->localityConfig[taskId] == nodeId ? "true" : "false") << std::endl;
       MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, nodeId, 0, MPI_COMM_WORLD);
     }
 
@@ -199,7 +200,7 @@ public:
         .taskId = taskId
       }};
 
-      logger->Log() << "Dispatch_ReduceTask," << taskId << ',' << i + 1 << std::endl;
+      logger->log() << "Dispatch_ReduceTask," << taskId << ',' << i + 1 << std::endl;
       MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, nodeId, 0, MPI_COMM_WORLD);
     }
 
@@ -217,7 +218,7 @@ public:
     pthread_join(server_t, 0);
 
     auto elapsed = std::chrono::system_clock::now() - start;
-    logger->Log() << "Finish_Job," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
+    logger->log() << "Finish_Job," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
   }
 };
 
