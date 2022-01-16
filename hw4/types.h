@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+/* Config */
+
 class Config {
 public:
   // Number of nodes, specified by TA. One of the nodes will act as the
@@ -111,6 +113,8 @@ public:
   }
 };
 
+/* KV */
+
 class KV {
 private:
   unsigned int hashCode;
@@ -138,6 +142,8 @@ typedef std::vector<KV> VectorKV;
 typedef std::pair<KV, int> PairKVInt;
 typedef std::multimap<KV, int> MultimapKVInt;
 
+/* KVs */
+
 class KVs {
 public:
   std::string key;
@@ -153,6 +159,8 @@ public:
 };
 
 typedef std::vector<KVs> VectorKVs;
+
+/* Message */
 
 enum class MessageType : int {
   MAP,
@@ -185,6 +193,8 @@ union Message {
 
   int raw[MESSAGE_SIZE];
 };
+
+/* Callback */
 
 typedef void (*CallbackFunc)(MessageType, int, int, int);
 
