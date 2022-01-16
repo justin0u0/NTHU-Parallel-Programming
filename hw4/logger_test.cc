@@ -7,7 +7,7 @@ int main() {
 
   Logger* fileLogger = new Logger("./tests/logger_test.log");
 
-  filelogger->log() << "hello" << std::endl;
+  fileLogger->log() << "hello" << std::endl;
 
   delete logger;
   delete fileLogger;
