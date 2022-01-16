@@ -7,61 +7,61 @@
 
 class Logger {
 private:
-	std::ostream* os;
-	std::ofstream* ofs;
+  std::ostream* os;
+  std::ofstream* ofs;
 
-	bool withStdout;
+  bool withStdout;
 public:
-	enum class Level {
-		NONE,
-		INFO,
-		DEBUG
-	};
+  enum class Level {
+    NONE,
+    INFO,
+    DEBUG
+  };
 
-	Logger() {
-		os = new std::ostream(std::cout.rdbuf());
+  Logger() {
+    os = new std::ostream(std::cout.rdbuf());
 
-		withStdout = true;
-	}
+    withStdout = true;
+  }
 
-	Logger(const char* filename) {
-		ofs = new std::ofstream(filename);
+  Logger(const char* filename) {
+    ofs = new std::ofstream(filename);
 
-		os = new std::ostream(ofs->rdbuf());
+    os = new std::ostream(ofs->rdbuf());
 
-		withStdout = false;
-	}
+    withStdout = false;
+  }
 
-	Logger(const std::string& filename) : Logger(filename.c_str()) {}
+  Logger(const std::string& filename) : Logger(filename.c_str()) {}
 
-	~Logger() {
-		delete os;
-		delete ofs;
-	}
+  ~Logger() {
+    delete os;
+    delete ofs;
+  }
 
-	std::ostream& Log(Level level = Level::NONE) {
-		std::ostream& out = (*os);
+  std::ostream& Log(Level level = Level::NONE) {
+    std::ostream& out = (*os);
 
-		auto now = std::chrono::system_clock::now().time_since_epoch();
-		auto unixMillis = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    auto unixMillis = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
 
-		if (withStdout) {
-			switch (level) {
-				case Level::INFO:
-					out << "[INFO]: ";
-					break;
-				case Level::DEBUG:
-					out << "[DEBUG]: ";
-					break;
-				default:
-					break;
-			}
-		}
+    if (withStdout) {
+      switch (level) {
+        case Level::INFO:
+          out << "[INFO]: ";
+          break;
+        case Level::DEBUG:
+          out << "[DEBUG]: ";
+          break;
+        default:
+          break;
+      }
+    }
 
-		out << unixMillis << ',';
+    out << unixMillis << ',';
 
-		return out;
-	}
+    return out;
+  }
 };
 
 #endif

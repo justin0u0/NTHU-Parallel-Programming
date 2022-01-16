@@ -6,34 +6,34 @@
 #define NUM_TASKS 10
 
 void* sleepPrint(void* arg) {
-	int value = *(int*)arg;
+  int value = *(int*)arg;
 
-	sleep(2);
+  sleep(2);
 
-	printf("%d\n", value);
+  printf("%d\n", value);
 
-	return nullptr;
+  return nullptr;
 }
 
 int main() {
-	ThreadPool* pool = new ThreadPool(4);
+  ThreadPool* pool = new ThreadPool(4);
 
-	pool->start();
+  pool->start();
 
-	int* arr = new int[NUM_TASKS];
-	for (int i = 0; i < NUM_TASKS; ++i) {
-		arr[i] = i;
-		pool->addTask(new ThreadPoolTask(&sleepPrint, (void*)&arr[i]));
-	}
+  int* arr = new int[NUM_TASKS];
+  for (int i = 0; i < NUM_TASKS; ++i) {
+    arr[i] = i;
+    pool->addTask(new ThreadPoolTask(&sleepPrint, (void*)&arr[i]));
+  }
 
-	sleep(10);
+  sleep(10);
 
-	pool->terminate();
-	pool->join();
+  pool->terminate();
+  pool->join();
 
-	delete[] arr;
-	
-	delete pool;
+  delete[] arr;
+  
+  delete pool;
 
-	return 0;
+  return 0;
 }

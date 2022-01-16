@@ -14,105 +14,105 @@
 
 class TaskTracker {
 private:
-	int nodeId;
+  int nodeId;
 
-	Config* config;
+  Config* config;
 
-	ThreadPool* mapperPool;
-	ThreadPool* reducerPool;
+  ThreadPool* mapperPool;
+  ThreadPool* reducerPool;
 
-	bool terminating;
+  bool terminating;
 
-	void requestMapperTask() {
-		Message req = {.data = {.type = MessageType::MAP}};
+  void requestMapperTask() {
+    Message req = {.data = {.type = MessageType::MAP}};
 
-		MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
-	}
+    MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
+  }
 
-	void requestReducerTask() {
-		Message req = {.data = {.type = MessageType::REDUCE}};
+  void requestReducerTask() {
+    Message req = {.data = {.type = MessageType::REDUCE}};
 
-		MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
-	}
+    MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
+  }
 
-	void serve() {
-		requestMapperTask();
-		requestReducerTask();
+  void serve() {
+    requestMapperTask();
+    requestReducerTask();
 
-		Message resp;
+    Message resp;
 
-		while (!terminating) {
-			MPI_Recv(resp.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    while (!terminating) {
+      MPI_Recv(resp.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-			switch (resp.data.type) {
-				case MessageType::MAP: {
-					// dispatch mapper task
+      switch (resp.data.type) {
+        case MessageType::MAP: {
+          // dispatch mapper task
 
-					Mapper* mapper = new Mapper(resp.data.id, resp.data.taskId, nodeId, config, &TaskTracker::callback);
-					mapperPool->addTask(new ThreadPoolTask(&Mapper::run, mapper));
+          Mapper* mapper = new Mapper(resp.data.id, resp.data.taskId, nodeId, config, &TaskTracker::callback);
+          mapperPool->addTask(new ThreadPoolTask(&Mapper::run, mapper));
 
-					usleep(10000);
-					requestMapperTask();
+          usleep(10000);
+          requestMapperTask();
 
-					break;
-				}
-				case MessageType::REDUCE: {
-					// dispatch reducer task
+          break;
+        }
+        case MessageType::REDUCE: {
+          // dispatch reducer task
 
-					Reducer* reducer = new Reducer(resp.data.id, resp.data.taskId, config, &TaskTracker::callback);
-					reducerPool->addTask(new ThreadPoolTask(&Reducer::run, reducer));
+          Reducer* reducer = new Reducer(resp.data.id, resp.data.taskId, config, &TaskTracker::callback);
+          reducerPool->addTask(new ThreadPoolTask(&Reducer::run, reducer));
 
-					usleep(10000);
-					requestReducerTask();
+          usleep(10000);
+          requestReducerTask();
 
-					break;
-				}
-				case MessageType::TERMINATE: {
-					terminating = true;
-					break;
-				}
-			}
-		}
-	}
+          break;
+        }
+        case MessageType::TERMINATE: {
+          terminating = true;
+          break;
+        }
+      }
+    }
+  }
 public:
-	TaskTracker(int nodeId, Config* config) : nodeId(nodeId), config(config) {
-		mapperPool = new ThreadPool(config->cpus - 1);
-		reducerPool = new ThreadPool(1);
+  TaskTracker(int nodeId, Config* config) : nodeId(nodeId), config(config) {
+    mapperPool = new ThreadPool(config->cpus - 1);
+    reducerPool = new ThreadPool(1);
 
-		terminating = false;
-	}
+    terminating = false;
+  }
 
-	~TaskTracker() {
-		delete mapperPool;
-		delete reducerPool;
-	}
+  ~TaskTracker() {
+    delete mapperPool;
+    delete reducerPool;
+  }
 
-	void run() {
-		mapperPool->start();
-		reducerPool->start();
+  void run() {
+    mapperPool->start();
+    reducerPool->start();
 
-		serve();
+    serve();
 
-		mapperPool->terminate();
-		reducerPool->terminate();
+    mapperPool->terminate();
+    reducerPool->terminate();
 
-		mapperPool->join();
-		reducerPool->join();
+    mapperPool->join();
+    reducerPool->join();
 
-		Message req = {.data = {.type = MessageType::TERMINATE}};
-		MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
-	}
+    Message req = {.data = {.type = MessageType::TERMINATE}};
+    MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
+  }
 
-	static void callback(MessageType type, int id, int taskId, int data) {
-		Message req = Message{.data = {
-			.type = type,
-			.id = id,
-			.taskId = taskId,
-			.data = data
-		}};
+  static void callback(MessageType type, int id, int taskId, int data) {
+    Message req = Message{.data = {
+      .type = type,
+      .id = id,
+      .taskId = taskId,
+      .data = data
+    }};
 
-		MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
-	}
+    MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, JOB_TRACKER_NODE, 0, MPI_COMM_WORLD);
+  }
 };
 
 #endif // _TASK_TRACKER_H_

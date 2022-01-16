@@ -154,7 +154,7 @@ public:
     reducer->write(reduceResult);
     // std::cout << "write done" << std::endl;
 
-		auto elapsed = std::chrono::system_clock::now() - start;
+    auto elapsed = std::chrono::system_clock::now() - start;
     int duration = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
     (*(reducer->callback))(MessageType::REDUCE_DONE, reducer->id, reducer->taskId, duration);
 

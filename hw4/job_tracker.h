@@ -13,212 +13,212 @@
 
 class JobTracker {
 private:
-	Config* config;
+  Config* config;
 
-	// list of task id that has not been dispatch
-	std::list<int> tasks;
+  // list of task id that has not been dispatch
+  std::list<int> tasks;
 
-	// nodes that request for mapper task
-	std::queue<int> mapperTaskRequests;
-	// nodes that request for reducer task
-	std::queue<int> reducerTaskRequests;
+  // nodes that request for mapper task
+  std::queue<int> mapperTaskRequests;
+  // nodes that request for reducer task
+  std::queue<int> reducerTaskRequests;
 
-	int inflightMapperTasks;
-	int inflightReducerTasks;
-	int workingTaskTrackers;
-	int totalMapperKeys;
-	int totalShuffleStarts;
-	int totalShuffleEnds;
+  int inflightMapperTasks;
+  int inflightReducerTasks;
+  int workingTaskTrackers;
+  int totalMapperKeys;
+  int totalShuffleStarts;
+  int totalShuffleEnds;
 
-	std::chrono::time_point<std::chrono::system_clock> start;
-	std::chrono::time_point<std::chrono::system_clock> shuffleStart;
+  std::chrono::time_point<std::chrono::system_clock> start;
+  std::chrono::time_point<std::chrono::system_clock> shuffleStart;
 
-	pthread_t server_t;
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
+  pthread_t server_t;
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
 
-	Logger* logger;
+  Logger* logger;
 
-	static void* serve(void* arg) {
-		JobTracker* jt = (JobTracker*)arg;
+  static void* serve(void* arg) {
+    JobTracker* jt = (JobTracker*)arg;
 
-		Message resp;
-		MPI_Status status;
+    Message resp;
+    MPI_Status status;
 
-		while (jt->workingTaskTrackers != 0) {
-			MPI_Recv(resp.raw, MESSAGE_SIZE, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+    while (jt->workingTaskTrackers != 0) {
+      MPI_Recv(resp.raw, MESSAGE_SIZE, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
 
-			pthread_mutex_lock(&jt->mutex);
-			switch (resp.data.type) {
-				case MessageType::MAP:
-					jt->mapperTaskRequests.push(status.MPI_SOURCE);
-					pthread_cond_signal(&jt->cond);
-					break;
-				case MessageType::SHUFFLE:
-					jt->totalMapperKeys += resp.data.data;
-					++jt->totalShuffleStarts;
-					if (jt->totalShuffleStarts == jt->config->numMappers) {
-						jt->shuffleStart = std::chrono::system_clock::now();
-						jt->logger->Log() << "Start_Shuffle," << jt->totalMapperKeys << std::endl;
-					}
-					break;
-				case MessageType::REDUCE:
-					jt->reducerTaskRequests.push(status.MPI_SOURCE);
-					pthread_cond_signal(&jt->cond);
-					break;
-				case MessageType::MAP_DONE:
-					--jt->inflightMapperTasks;
-					jt->logger->Log() << "Complete_MapTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
-					break;
-				case MessageType::SHUFFLE_DONE:
-					++jt->totalShuffleEnds;
-					if (jt->totalShuffleEnds == jt->config->numReducers) {
-						auto elapsed = std::chrono::system_clock::now() - jt->shuffleStart;
-						jt->logger->Log() << "Finish_Shuffle," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
-					}
-					break;
-				case MessageType::REDUCE_DONE:
-					--jt->inflightReducerTasks;
-					jt->logger->Log() << "Complete_ReduceTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
-					break;
-				case MessageType::TERMINATE:
-					--jt->workingTaskTrackers;
-					break;
-			}
-			pthread_mutex_unlock(&jt->mutex);
-		}
+      pthread_mutex_lock(&jt->mutex);
+      switch (resp.data.type) {
+        case MessageType::MAP:
+          jt->mapperTaskRequests.push(status.MPI_SOURCE);
+          pthread_cond_signal(&jt->cond);
+          break;
+        case MessageType::SHUFFLE:
+          jt->totalMapperKeys += resp.data.data;
+          ++jt->totalShuffleStarts;
+          if (jt->totalShuffleStarts == jt->config->numMappers) {
+            jt->shuffleStart = std::chrono::system_clock::now();
+            jt->logger->Log() << "Start_Shuffle," << jt->totalMapperKeys << std::endl;
+          }
+          break;
+        case MessageType::REDUCE:
+          jt->reducerTaskRequests.push(status.MPI_SOURCE);
+          pthread_cond_signal(&jt->cond);
+          break;
+        case MessageType::MAP_DONE:
+          --jt->inflightMapperTasks;
+          jt->logger->Log() << "Complete_MapTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
+          break;
+        case MessageType::SHUFFLE_DONE:
+          ++jt->totalShuffleEnds;
+          if (jt->totalShuffleEnds == jt->config->numReducers) {
+            auto elapsed = std::chrono::system_clock::now() - jt->shuffleStart;
+            jt->logger->Log() << "Finish_Shuffle," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
+          }
+          break;
+        case MessageType::REDUCE_DONE:
+          --jt->inflightReducerTasks;
+          jt->logger->Log() << "Complete_ReduceTask," << resp.data.taskId << ',' << resp.data.data << std::endl;
+          break;
+        case MessageType::TERMINATE:
+          --jt->workingTaskTrackers;
+          break;
+      }
+      pthread_mutex_unlock(&jt->mutex);
+    }
 
-		return nullptr;
-	}
+    return nullptr;
+  }
 public:
-	JobTracker(Config* config) : config(config) {
-		pthread_mutex_init(&mutex, 0);
-		pthread_cond_init(&cond, 0);
+  JobTracker(Config* config) : config(config) {
+    pthread_mutex_init(&mutex, 0);
+    pthread_cond_init(&cond, 0);
 
-		// load taskId (chuckId), taskId is between 1 ~ numMappers
-		for (int i = 1; i <= config->numMappers; ++i) {
-			tasks.emplace_back(i);
-		}
+    // load taskId (chuckId), taskId is between 1 ~ numMappers
+    for (int i = 1; i <= config->numMappers; ++i) {
+      tasks.emplace_back(i);
+    }
 
-		inflightMapperTasks = 0;
-		inflightReducerTasks = 0;
-		workingTaskTrackers = config->nodes - 1;
-		totalMapperKeys = 0;
-		totalShuffleStarts = 0;
-		totalShuffleEnds = 0;
+    inflightMapperTasks = 0;
+    inflightReducerTasks = 0;
+    workingTaskTrackers = config->nodes - 1;
+    totalMapperKeys = 0;
+    totalShuffleStarts = 0;
+    totalShuffleEnds = 0;
 
-		start = std::chrono::system_clock::now();
+    start = std::chrono::system_clock::now();
 
-		logger = new Logger(config->logFilename());
-	}
+    logger = new Logger(config->logFilename());
+  }
 
-	~JobTracker() {
-		pthread_mutex_destroy(&mutex);
-		pthread_cond_destroy(&cond);
+  ~JobTracker() {
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&cond);
 
-		delete logger;
-	}
+    delete logger;
+  }
 
-	void run() {
-		logger->Log() << "Start_Job," << config->jobName << ',' << config->nodes << ','
-			<< config->cpus << ',' << config->numReducers << ',' << config->delay << ','
-			<< config->inputFilename << ',' << config->chunkSize << ','
-			<< config->localityConfigFilename << ',' << config->outputDir << std::endl;
+  void run() {
+    logger->Log() << "Start_Job," << config->jobName << ',' << config->nodes << ','
+      << config->cpus << ',' << config->numReducers << ',' << config->delay << ','
+      << config->inputFilename << ',' << config->chunkSize << ','
+      << config->localityConfigFilename << ',' << config->outputDir << std::endl;
 
-		pthread_create(&server_t, 0, JobTracker::serve, (void*)this);
+    pthread_create(&server_t, 0, JobTracker::serve, (void*)this);
 
-		for (int i = 1; i <= config->numMappers; ++i) {
-			// generate mapper tasks
+    for (int i = 1; i <= config->numMappers; ++i) {
+      // generate mapper tasks
 
-			pthread_mutex_lock(&mutex);
+      pthread_mutex_lock(&mutex);
 
-			++inflightMapperTasks;
+      ++inflightMapperTasks;
 
-			while (mapperTaskRequests.empty()) {
-				pthread_cond_wait(&cond, &mutex);
-			}
+      while (mapperTaskRequests.empty()) {
+        pthread_cond_wait(&cond, &mutex);
+      }
 
-			int nodeId = mapperTaskRequests.front();
-			mapperTaskRequests.pop();
+      int nodeId = mapperTaskRequests.front();
+      mapperTaskRequests.pop();
 
-			pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&mutex);
 
-			// find data with locality
-			std::list<int>::iterator it;
-			for (it = tasks.begin(); it != tasks.end(); ++it) {
-				if (config->localityConfig[*it] == nodeId) {
-					break;
-				}
-			}
+      // find data with locality
+      std::list<int>::iterator it;
+      for (it = tasks.begin(); it != tasks.end(); ++it) {
+        if (config->localityConfig[*it] == nodeId) {
+          break;
+        }
+      }
 
-			// if no matching data with the node, pick the first one
-			if (it == tasks.end()) {
-				it = tasks.begin();
-			}
+      // if no matching data with the node, pick the first one
+      if (it == tasks.end()) {
+        it = tasks.begin();
+      }
 
-			int taskId = *it;
-			tasks.erase(it);
+      int taskId = *it;
+      tasks.erase(it);
 
-			// send event to task tracker
-			Message req = Message{.data = {
-				.type = MessageType::MAP,
-				.id = i,
-				.taskId = taskId
-			}};
+      // send event to task tracker
+      Message req = Message{.data = {
+        .type = MessageType::MAP,
+        .id = i,
+        .taskId = taskId
+      }};
 
-			logger->Log() << "Dispatch_MapTask," << taskId << ',' << i << std::endl;
-			MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, nodeId, 0, MPI_COMM_WORLD);
-		}
+      logger->Log() << "Dispatch_MapTask," << taskId << ',' << i << std::endl;
+      MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, nodeId, 0, MPI_COMM_WORLD);
+    }
 
-		while (inflightMapperTasks > 0) {
-			usleep(1000);
-		}
+    while (inflightMapperTasks > 0) {
+      usleep(1000);
+    }
 
-		for (int i = 0; i < config->numReducers; ++i) {
-			// generate reducer tasks
-			pthread_mutex_lock(&mutex);
+    for (int i = 0; i < config->numReducers; ++i) {
+      // generate reducer tasks
+      pthread_mutex_lock(&mutex);
 
-			++inflightReducerTasks;
+      ++inflightReducerTasks;
 
-			while (reducerTaskRequests.empty()) {
-				pthread_cond_wait(&cond, &mutex);
-			}
+      while (reducerTaskRequests.empty()) {
+        pthread_cond_wait(&cond, &mutex);
+      }
 
-			int nodeId = reducerTaskRequests.front();
-			reducerTaskRequests.pop();
+      int nodeId = reducerTaskRequests.front();
+      reducerTaskRequests.pop();
 
-			pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&mutex);
 
-			// send event to task tracker
+      // send event to task tracker
 
-			int taskId = i;
-			
-			Message req = Message{.data = {
-				.type = MessageType::REDUCE,
-				.id = i + 1,
-				.taskId = taskId
-			}};
+      int taskId = i;
+      
+      Message req = Message{.data = {
+        .type = MessageType::REDUCE,
+        .id = i + 1,
+        .taskId = taskId
+      }};
 
-			logger->Log() << "Dispatch_ReduceTask," << taskId << ',' << i + 1 << std::endl;
-			MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, nodeId, 0, MPI_COMM_WORLD);
-		}
+      logger->Log() << "Dispatch_ReduceTask," << taskId << ',' << i + 1 << std::endl;
+      MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, nodeId, 0, MPI_COMM_WORLD);
+    }
 
-		while (inflightReducerTasks > 0) {
-			usleep(1000);
-		}
+    while (inflightReducerTasks > 0) {
+      usleep(1000);
+    }
 
-		Message req = Message{.data = {
-			.type = MessageType::TERMINATE
-		}};
-		for (int i = 1; i < config->nodes; ++i) {
-			MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, i, 0, MPI_COMM_WORLD);
-		}
+    Message req = Message{.data = {
+      .type = MessageType::TERMINATE
+    }};
+    for (int i = 1; i < config->nodes; ++i) {
+      MPI_Send(req.raw, MESSAGE_SIZE, MPI_INT, i, 0, MPI_COMM_WORLD);
+    }
 
-		pthread_join(server_t, 0);
+    pthread_join(server_t, 0);
 
-		auto elapsed = std::chrono::system_clock::now() - start;
-		logger->Log() << "Finish_Job," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
-	}
+    auto elapsed = std::chrono::system_clock::now() - start;
+    logger->Log() << "Finish_Job," << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() << std::endl;
+  }
 };
 
 #endif

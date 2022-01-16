@@ -27,15 +27,15 @@ int main() {
   std::string localityConfigFilename = "./ta/testcases/01.loc";
   std::string outputDir = "./tests/";
 
-	Config* config = new Config(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
+  Config* config = new Config(1, 1, jobName, numReducers, delay, inputFilename, chunkSize, localityConfigFilename, outputDir);
 
-	for (int i = 0; i < config->numReducers; ++i) {
-		Reducer* reducer = new Reducer(i + 1, i, config, &callback);
+  for (int i = 0; i < config->numReducers; ++i) {
+    Reducer* reducer = new Reducer(i + 1, i, config, &callback);
 
-		Reducer::run((void*)reducer);
-	}
+    Reducer::run((void*)reducer);
+  }
 
-	delete config;
+  delete config;
 
-	return 0;
+  return 0;
 }

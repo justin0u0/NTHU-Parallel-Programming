@@ -109,7 +109,7 @@ public:
     mapper->write(partitionResult);
     // std::cout << "[Mapper::run]: " << mapper->id << " write done" << std::endl;
 
-		auto elapsed = std::chrono::system_clock::now() - start;
+    auto elapsed = std::chrono::system_clock::now() - start;
     int duration = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
     (*(mapper->callback))(MessageType::MAP_DONE, mapper->id, mapper->taskId, duration);
     // std::cout << "[Mapper::run]: " << mapper->id << " callback done" << std::endl;
